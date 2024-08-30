@@ -31,7 +31,7 @@ core_pce <- read.csv("/Users/takayukitamura/Documents/R_Computing/cpi_treasury/d
   select(-X)
 tail(core_pce)
 updates <- tibble(date=c("2024-04-01", "2024-05-01", "2024-06-01", "2024-07-01"), 
-                            core_pce=c(2.8, 2.6, 2.6, 2.7))
+                            core_pce=c(2.8, 2.6, 2.6, 2.6))
 
 core_pce <- rbind(core_pce, updates)
 
