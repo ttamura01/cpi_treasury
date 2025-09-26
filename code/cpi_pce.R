@@ -2,74 +2,61 @@ library(tidyverse)
 library(patchwork)
 library(ggtext)
 library(glue)
+library(fredr)
+
 setwd("/Users/takayukitamura/Documents/R_Computing/cpi_treasury/code")
-pce <- read.csv("/Users/takayukitamura/Documents/R_Computing/cpi_treasury/data/pce.csv") %>% 
-  select(-X)
 
-tail(pce)
+#Set my FRED API key
+fredr_set_key("0c5fd2514c7d98427fe3c931e2fcb244")
 
-updates <- tibble(date=c("2024-04-01", "2024-05-01", "2024-06-01", "2024-07-01"), 
-                       pce=c(2.7, 2.6, 2.5, 2.5))
-  
-pce <- rbind(pce, updates)
-
-#write.csv(pce, "pce.csv")
-
-pce$date <- as.Date(pce$date)
-
-sapply(pce, class)
+pce <- fredr(series_id = "PCEPI") %>% 
+  select(date, pce = value) %>% 
+  mutate(pce_yoy = round((pce/lag(pce, 12)-1)*100, 1)) %>% 
+  na.omit() %>% 
+  select(date, pce_yoy)
 
 pce %>% 
-  ggplot(aes(x = date, y = pce)) +
+  ggplot(aes(x = date, y = pce_yoy)) +
   geom_line()
 
-pce %>% 
-  ggplot(aes(x = date, y = pce)) +
-  geom_line() 
+core_pce <- fredr(series_id = "PCEPILFE") %>% 
+  select(date, core_pce = value) %>% 
+  mutate(core_pce_yoy = round((core_pce/lag(core_pce, 12)-1)*100, 1)) %>% 
+  na.omit() %>% 
+  select(date, core_pce_yoy)
 
-core_pce <- read.csv("/Users/takayukitamura/Documents/R_Computing/cpi_treasury/data/core_pce.csv") %>% 
-  select(-X)
-tail(core_pce)
-updates <- tibble(date=c("2024-04-01", "2024-05-01", "2024-06-01", "2024-07-01"), 
-                            core_pce=c(2.8, 2.6, 2.6, 2.6))
-
-core_pce <- rbind(core_pce, updates)
-
-tail(core_pce)
-
-#write.csv(core_pce, "core_pce.csv")
-
-core_pce$date <- as.Date(core_pce$date)
-
-head(core_pce)
-
-tail(core_pce)
-
-sapply(core_pce, class)
+core_pce %>% 
+  ggplot(aes(x = date, y = core_pce_yoy)) +
+  geom_line()
 
 ## understand the core inflation each period 
 dated <- core_pce %>% 
-  filter(date >= "2020-01-01" & date <= "2024-12-31")
+  filter(date >= "1960-01-01" & date <= "2025-12-31")
 
 dated %>% 
-  ggplot(aes(x = date, y = core_pce)) +
+  ggplot(aes(x = date, y = core_pce_yoy)) +
   geom_line()
 
 dated %>% 
-  mutate(average_core_pce = mean(core_pce))
+  mutate(average_core_pce = mean(core_pce_yoy))
 
 
-pce_cpce <- merge(pce, core_pce, by = "date")
+pce_core_pce <- merge(pce, core_pce, by = "date") #%>% select(-X)
 
-#write.csv(pce_cpce, "pce_cpce.csv")
+# write.csv(pce_cpce, "pce_cpce.csv")
+# 
+# read_csv("pce_cpce.csv") %>% 
+#   select(-...1)
 
-pce_cpce %>% 
-  filter(date > "2020-01-01") %>% 
+tail(pce_core_pce)
+
+pce_core_pce %>% 
+  filter(date > "2015-01-01") %>% 
   pivot_longer(cols = -date, names_to = "index", values_to = "inflation") %>% 
   ggplot(aes(x = date, y = inflation, color = index)) +
   geom_line() +
   geom_abline(slope = 0, intercept = 2) +
-  labs(title = "The PCE inflation index eased to 2.6% and Core index to 2.6% in May, from April 2.7& and 2.8%, in-line with market expected",
+  labs(title = "The PCE inflation remain stubbornly high at 2.6%, Core index 2.8% in June",
        #subtitle = "Housing & related ccount for 34% in CPI, but only 15% in PCE",
        caption = "Source:Department of Commerce",
        x = NULL, y = NULL) +
@@ -82,129 +69,162 @@ pce_cpce %>%
 
 # addting monthly pce_change and pce_change_status
 
-pce_cpce <- pce_cpce %>% 
-  mutate(pce_monthly_change = c(NA, diff(pce)),
+pce_cpce <- pce_core_pce %>% 
+  mutate(pce_monthly_change = c(NA, diff(pce_yoy)),
          pce_montly_change_status = if_else(is.na(pce_monthly_change), NA_character_,
                                             if_else(pce_monthly_change> 0, "increased",
                                                     if_else(pce_monthly_change <0, "eased", "flat")))) %>% 
-  mutate(cpce_monthly_change = c(NA, diff(core_pce)),
-         cpce_montly_change_status = if_else(is.na(cpce_monthly_change), NA_character_,
-                                            if_else(cpce_monthly_change> 0, "increased",
-                                                    if_else(cpce_monthly_change <0, "eased", "flat"))))
+  mutate(core_pce_monthly_change = c(NA, diff(core_pce_yoy)),
+         core_pce_montly_change_status = if_else(is.na(core_pce_monthly_change), NA_character_,
+                                            if_else(core_pce_monthly_change> 0, "increased",
+                                                    if_else(core_pce_monthly_change <0, "eased", "flat"))))
 
 # latest month
-
-max(pce_cpce$date)
 
 latest_data <- pce_cpce %>% 
   filter(date == max(date))
 
-sapply(latest_data, class)
+latest_month <- format(latest_data$date, "%B")
 
-latest_data$date <- as.Date(latest_data$date)
+latest_pce_yoy <- latest_data$pce_yoy
+latest_core_pce <- latest_data$core_pce_yoy
+latest_pce_status <- latest_data$pce_montly_change_status
+latest_core_pce_status <- latest_data$core_pce_montly_change_status
 
-latest_month <- latest_data[,1]
-class(latest_month)
-month_abbr <- format(latest_month, "%b")
-latest_pce <- latest_data[,2]
-latest_cpce <- latest_data[,3]
-latest_pce_status <- latest_data[,5]
-latest_cpce_status <- latest_data[,7]
+order_levels <- pce_core_pce %>% 
+  filter(date == max(pce_core_pce$date)) %>% 
+  # select(-date) %>% 
+  pivot_longer(-date, names_to = "name", values_to = "value" ) %>% 
+  arrange(desc(value)) %>% 
+  pull(name)
 
-pce_cpce %>% 
-  filter(date >="2015-01-01") %>% 
-  select(date, pce, core_pce) %>% 
-  pivot_longer(cols = -date, names_to = "index", values_to = "inflation") %>% 
-  ggplot(aes(x = date, y = inflation, color = index)) +
+pce_core_pce %>% 
+  filter(date >= "2015-01-01") %>% 
+  select(date, pce_yoy, core_pce_yoy) %>% 
+  pivot_longer(cols = -date, names_to = "name", values_to = "inflation") %>% 
+  mutate(name = factor(name, levels = order_levels)) %>% 
+  ggplot(aes(x = date, y = inflation, color = name)) +
   geom_line() +
-  geom_hline(aes(yintercept = 2)) +
-  labs(title = glue("US inflation {latest_pce_status } in {month_abbr}
-                    (guaged by Personal Consumption Expeditures, which is used as 
-                    primary inflation indicator by Fed for their rate decision) 
-                    to {latest_pce}, 
-                    approaching to their target at 2.0%"),
-       x = NULL, y = "percent",
-       caption = "Labor Department, FRED") +
+  geom_hline(yintercept = 2) +
+  scale_color_manual(
+    name = NULL,
+    # breaks = c(pce_yoy, core_pce_yoy), 
+    values = c("#000000", "#0079ae" ),
+    labels = c("core-PCE (%)", "PCE(%)")) +
+  labs(
+    title = glue("US PCE inflation {latest_pce_status} in {latest_month} to {latest_pce_yoy}%, core_PCE {latest_core_pce_status}, to {latest_core_pce}%, modest inflation vs. 2.0% target"),
+    x = NULL, y = "percent",
+    caption = "Labor Department, FRED, by Takayuki Tamura"
+  ) +
   theme(
     plot.title.position = "plot",
-    plot.title = element_textbox_simple()
+    plot.title = element_textbox_simple(),
+    panel.background = element_blank(),
+    legend.position = "inside",
+    legend.position.inside = c(0.85, 0.2)
   )
 
-ggsave("/Users/takayukitamura/Documents/R_Computing/figures/pce_inflation_2024_05_01.png", width = 6, height = 5)
+ggsave("pce_inflation.png", width = 6, height = 5)
 
 # cip & ccpi
+fredr_set_key("0c5fd2514c7d98427fe3c931e2fcb244")
 
-cpi_ccpi <- read.csv("/Users/takayukitamura/Documents/R_Computing/cpi_treasury/data/cpi_ccpi_03_2024.csv") %>% 
-  select(-X)
+cpi <- fredr(series_id = "CPIAUCSL") %>% 
+  select(date, cpi = value) %>% 
+  mutate(cpi_yoy = round((cpi/lag(cpi, 12)-1)*100, 1)) %>% 
+  na.omit() %>% 
+  select(date, cpi_yoy)
 
-updates <- tibble(date = c("2024-04-01", "2024-05-01", "2024-06-01", "2024-07-01"),
-                              cpi = c(3.4, 3.3, 3.0, 2.9),
-                              ccpi = c(3.6, 3.4, 3.3, 3.2))
-updates
+core_cpi <- fredr(series_id = "CPILFESL") %>% 
+  select(date, core_cpi = value) %>% 
+  mutate(core_cpi_yoy = round((core_cpi/lag(core_cpi, 12)-1)*100, 1)) %>% 
+  na.omit() %>% 
+  select(date, core_cpi_yoy)
 
-cpi_ccpi <- rbind(cpi_ccpi, updates)
+cpi_core_cpi <- cpi %>% 
+  left_join(., core_cpi, by = "date")
 
-
-head(cpi_ccpi)
-tail(cpi_ccpi)
-
-cpi_ccpi <- cpi_ccpi %>% 
-  mutate(cpi_monthly_change = c(NA, diff(cpi)),
+cpi_ccpi <- cpi_core_cpi %>% 
+  mutate(cpi_monthly_change = c(NA, diff(cpi_yoy)),
          cpi_montly_change_status = if_else(is.na(cpi_monthly_change), NA_character_,
                                          if_else(cpi_monthly_change> 0, "increased",
                                                  if_else(cpi_monthly_change <0, "eased", "flat")))) %>% 
-  mutate(ccpi_monthly_change = c(NA, diff(ccpi)),
-         ccpi_montly_change_status = if_else(is.na(ccpi_monthly_change), NA_character_,
-                                            if_else(ccpi_monthly_change> 0, "increased",
-                                                    if_else(ccpi_monthly_change <0, "eased", "flat"))))
+  mutate(core_cpi_monthly_change = c(NA, diff(core_cpi_yoy)),
+         core_cpi_montly_change_status = if_else(is.na(core_cpi_monthly_change), NA_character_,
+                                            if_else(core_cpi_monthly_change> 0, "increased",
+                                                    if_else(core_cpi_monthly_change <0, "eased", "flat"))))
 
-max(cpi_ccpi$date)
+# latest data for labeling
 latest_data <- cpi_ccpi %>% 
   filter(date == max(date))
 
-latest_data$date <- as.Date(latest_data$date)
+latest_month <- format(latest_data$date, "%B")
 
-latest_month <- latest_data[,1]
-class(latest_month)
-month_abbr <- format(latest_month, "%b")
-latest_cpi <- latest_data[,2]
-latest_ccpi <- latest_data[,3]
-latest_cpi_status <- latest_data[,5]
-latest_ccpi_status <- latest_data[,7]
+latest_cpi_yoy <- latest_data$cpi_yoy
+latest_core_cpi_yoy <- latest_data$core_cpi_yoy
+latest_cpi_status <- latest_data$cpi_montly_change_status
+latest_core_cpi_status <- latest_data$core_cpi_montly_change_status
 
+order_levels <- cpi_core_cpi %>% 
+  filter(date == max(cpi_core_cpi$date)) %>% 
+  # select(-date) %>% 
+  pivot_longer(-date, names_to = "index", values_to = "inflation" ) %>% 
+  arrange(desc(inflation)) %>% 
+  pull(index)
 
-####
-# cpi <- cpi %>% 
-#   mutate(m_change = c(NA, diff(cpi)),
-#          change_status = if_else(is.na(m_change), NA_character_,
-#                                  if_else(m_change> 0, "increased",
-#                                          if_else(m_change <0, "eased", "flat")))
-#   )
-
-####
-
-sapply(cpi_ccpi, class)
-
-cpi_ccpi$date <- as.Date(cpi_ccpi$date)
-
-
-cpi_ccpi %>% 
-  filter(date >="2015-01-01") %>% 
-  select(date, cpi, ccpi) %>% 
+cpi_core_cpi %>% 
+  filter(date >="2011-01-01") %>% 
+  select(date, cpi_yoy, core_cpi_yoy) %>% 
   pivot_longer(cols = -date, names_to = "index", values_to = "inflation") %>% 
+  mutate(name = factor(index, levels = order_levels)) %>% 
   ggplot(aes(x = date, y = inflation, color = index)) +
   geom_line() +
-  geom_hline(aes(yintercept = 2)) +
-  labs(title = glue("US inflation {latest_cpi_status} in {month_abbr} to {latest_cpi}%(cpi), {latest_ccpi}%(core cpi) vs. Fed's target at 2.0%, lower than the market expected"),
-       x = NULL, y = "percent",
-       caption = "Labor Department, FRED") +
+  scale_color_manual(breaks = c("core_cpi_yoy", "cpi_yoy"),
+                     values = c("#0079ae", "#000000"),
+                     label = c("core-CPI (%)", "CPI (%)")) +
+  geom_hline(yintercept = 2) +
+  labs(title = glue("US inflation in {latest_month} {latest_cpi_status} to {latest_cpi_yoy}%, core-CPI {latest_core_cpi_status} at {latest_core_cpi_yoy}% in-line with market expected"),
+       x = NULL, y = "Inflation(%)",
+       caption = "Labor Department, FRED, by Takayuki Tamura") +
   theme(
     plot.title.position = "plot",
-    plot.title = element_textbox_simple()
+    plot.title = element_textbox_simple(),
+    legend.key = element_blank(),
+    legend.title = element_blank(),
+    legend.position = "inside",
+    panel.background = element_blank()
   )
 
-  
-ggsave("us_cpi.png", height = 4, width = 5)  
+cpi_core_cpi %>% 
+  filter(date >="2015-01-01") %>% 
+  select(date, cpi_yoy, core_cpi_yoy) %>% 
+  pivot_longer(cols = -date, names_to = "index", values_to = "inflation") %>% 
+  ggplot(aes(x = date, y = inflation, color = index)) +
+  geom_line(linewidth = 2,lineend = "round", show.legend = TRUE) +
+  geom_hline(yintercept = 2) +
+  labs(title = glue("US inflation in {latest_month} at {latest_cpi_yoy}%(cpi), {latest_core_cpi_yoy}%(core)"),
+       x = NULL, y = "inflation (%)",
+       caption = "Labor Department, FRED, by Takayuki Tamura") +
+  scale_color_manual(breaks = c("core_cpi_yoy", "cpi_yoy"),
+                     values = c("darkred", "darkgreen")) +
+  # scale_y_continuous(label = scales::label_percent()) +
+  # annotate("text", x =c(2024-11-01, 2024-11-01), y = c(3.5, 2.8),
+  #          label = c("core-CPI", "CPI")) +
+  theme_classic() +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_textbox_simple(size = 18, face = "bold"),
+    plot.subtitle = element_textbox_simple(size = 14, face = "italic"),
+    legend.key = element_blank(),
+    legend.title = element_blank(),
+    legend.text = element_text(size = 15),
+    legend.position = "top",
+    panel.grid.major.y = element_line(),
+    axis.text = element_text(size = 15, face = "bold"),
+    axis.title = element_text(size = 15, face = "bold")
+  )
+
+ggsave("us_cpi.png", height = 4, width = 6)  
 ggsave("/Users/takayukitamura/Documents/R_Computing/figures/us_cpi.png", height = 4, width = 5)
 
 cpi_pce_full <- merge(cpi_ccpi, pce_cpce, by = "date") 
@@ -250,7 +270,7 @@ cpi_pce_full %>%
     legend.key = element_rect(fill = "white")
   )
 
-ggsave("/Users/takayukitamura/Documents/R_Computing/figures/cpi_pce.png", height = 4.5, width = 6)
+ggsave("/Users/takayukitamura/Documents/R_Computing/figures/cpi_pce.png", height = , width = 6)
 
 
 
