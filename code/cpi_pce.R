@@ -112,7 +112,7 @@ pce_core_pce %>%
     values = c("#000000", "#0079ae" ),
     labels = c("core-PCE (%)", "PCE(%)")) +
   labs(
-    title = glue("US PCE inflation {latest_pce_status} in {latest_month} to {latest_pce_yoy}%, core_PCE {latest_core_pce_status}, to {latest_core_pce}%, modest inflation vs. 2.0% target"),
+    title = glue("US PCE inflation {latest_pce_status} in {latest_month} to {latest_pce_yoy}%, core_PCE {latest_core_pce_status} to {latest_core_pce}%, Overall Shows Moderate Trend"),
     x = NULL, y = "percent",
     caption = "Labor Department, FRED, by Takayuki Tamura"
   ) +
