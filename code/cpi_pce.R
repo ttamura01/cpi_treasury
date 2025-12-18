@@ -183,7 +183,7 @@ cpi_core_cpi %>%
                      values = c("#0079ae", "#000000"),
                      label = c("core-CPI (%)", "CPI (%)")) +
   geom_hline(yintercept = 2) +
-  labs(title = glue("US inflation in {latest_month} {latest_cpi_status} to {latest_cpi_yoy}%, core-CPI {latest_core_cpi_status} at {latest_core_cpi_yoy}% in-line with market expected"),
+  labs(title = glue("US inflation {latest_cpi_status} in {latest_month} to {latest_cpi_yoy}% from 3.0% in September, core-CPI {latest_core_cpi_status} at {latest_core_cpi_yoy}% down from 3% in September"),
        x = NULL, y = "Inflation(%)",
        caption = "Labor Department, FRED, by Takayuki Tamura") +
   theme(
