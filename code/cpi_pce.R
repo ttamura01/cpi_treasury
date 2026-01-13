@@ -158,12 +158,21 @@ cpi_ccpi <- cpi_core_cpi %>%
 latest_data <- cpi_ccpi %>% 
   filter(date == max(date))
 
+previous_data <- cpi_ccpi %>% 
+  arrange(date) %>% 
+  slice_tail(n = 2) %>% 
+  slice_head(n = 1)
+
 latest_month <- format(latest_data$date, "%B")
+previous_month <- format(previous_data$date, "%B")
 
 latest_cpi_yoy <- latest_data$cpi_yoy
 latest_core_cpi_yoy <- latest_data$core_cpi_yoy
 latest_cpi_status <- latest_data$cpi_montly_change_status
 latest_core_cpi_status <- latest_data$core_cpi_montly_change_status
+
+previous_cpi_yoy <- previous_data$cpi_yoy
+previous_core_cpi_yoy <- previous_data$core_cpi_yoy
 
 order_levels <- cpi_core_cpi %>% 
   filter(date == max(cpi_core_cpi$date)) %>% 
@@ -183,7 +192,7 @@ cpi_core_cpi %>%
                      values = c("#0079ae", "#000000"),
                      label = c("core-CPI (%)", "CPI (%)")) +
   geom_hline(yintercept = 2) +
-  labs(title = glue("US inflation {latest_cpi_status} in {latest_month} to {latest_cpi_yoy}% from 3.0% in September, core-CPI {latest_core_cpi_status} at {latest_core_cpi_yoy}% down from 3% in September"),
+  labs(title = glue("US inflation {latest_cpi_status} in {latest_month} to {latest_cpi_yoy}% from {previous_cpi_yoy} in {previous_month}, core-CPI {latest_core_cpi_status} at {latest_core_cpi_yoy}% from {previous_core_cpi_yoy} in {previous_month}"),
        x = NULL, y = "Inflation(%)",
        caption = "Labor Department, FRED, by Takayuki Tamura") +
   theme(
