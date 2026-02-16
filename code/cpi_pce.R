@@ -204,6 +204,8 @@ cpi_core_cpi %>%
     panel.background = element_blank()
   )
 
+ggsave("us_cpi.png", height = 4, width = 6) 
+
 cpi_core_cpi %>% 
   filter(date >="2015-01-01") %>% 
   select(date, cpi_yoy, core_cpi_yoy) %>% 
