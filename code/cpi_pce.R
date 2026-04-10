@@ -112,7 +112,7 @@ pce_core_pce %>%
     values = c("#000000", "#0079ae" ),
     labels = c("core-PCE (%)", "PCE(%)")) +
   labs(
-    title = glue("US PCE inflation {latest_pce_status} in {latest_month} to {latest_pce_yoy}%, core_PCE {latest_core_pce_status} to {latest_core_pce}%, Overall Shows Moderate Trend"),
+    title = glue("US PCE inflation {latest_pce_status} in {latest_month} to {latest_pce_yoy}%, core_PCE {latest_core_pce_status} to {latest_core_pce}%, Overall Stayed High in Even Pre-Iran War"),
     x = NULL, y = "percent",
     caption = "Labor Department, FRED, by Takayuki Tamura"
   ) +
@@ -192,7 +192,7 @@ cpi_core_cpi %>%
                      values = c("#0079ae", "#000000"),
                      label = c("core-CPI (%)", "CPI (%)")) +
   geom_hline(yintercept = 2) +
-  labs(title = glue("US inflation {latest_cpi_status} in {latest_month} to {latest_cpi_yoy}% from {previous_cpi_yoy} in {previous_month}, core-CPI {latest_core_cpi_status} at {latest_core_cpi_yoy}% from {previous_core_cpi_yoy} in {previous_month}"),
+  labs(title = glue("US inflation {latest_cpi_status} in {latest_month} to {latest_cpi_yoy}% from {previous_cpi_yoy}% in {previous_month}, core-CPI {latest_core_cpi_status} at {latest_core_cpi_yoy}% from {previous_core_cpi_yoy}% in {previous_month}"),
        x = NULL, y = "Inflation(%)",
        caption = "Labor Department, FRED, by Takayuki Tamura") +
   theme(
